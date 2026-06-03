@@ -7,9 +7,9 @@
 
 CampusCare AI è un prototipo di sistema intelligente basato su conoscenza progettato per supportare la gestione di segnalazioni tecniche in aule e laboratori universitari.
 
-Il sistema riceve una segnalazione strutturata, ad esempio un problema relativo a un router di laboratorio, a un proiettore o a un impianto audio, e produce una risposta composta da diagnosi, stima probabilistica dei guasti, priorità, intervento consigliato, tecnico assegnato e percorso operativo.
+Il sistema riceve una segnalazione strutturata, ad esempio un problema relativo a un router di laboratorio, a un proiettore o a un impianto audio, e produce una risposta composta da diagnosi, controllo tramite Knowledge Base Prolog, stima probabilistica dei guasti, priorità, intervento consigliato, tecnico assegnato e percorso operativo.
 
-L’obiettivo non è realizzare un semplice classificatore Machine Learning, ma un piccolo Knowledge-Based System ibrido che integri rappresentazione della conoscenza, ragionamento simbolico, ragionamento probabilistico, apprendimento supervisionato, vincoli e ricerca euristica.
+L’obiettivo non è realizzare un semplice classificatore Machine Learning, ma un piccolo Knowledge-Based System ibrido che integri rappresentazione della conoscenza, ragionamento simbolico, Knowledge Base Prolog, ragionamento probabilistico, apprendimento supervisionato, vincoli e ricerca euristica.
 
 ---
 
@@ -30,6 +30,7 @@ Una segnalazione è descritta da informazioni come:
 Dato un caso in input, il sistema deve produrre:
 
 - una diagnosi simbolica del guasto probabile;
+- un controllo della diagnosi tramite Knowledge Base Prolog;
 - una stima bayesiana dei guasti compatibili con il sintomo;
 - un intervento consigliato;
 - una priorità stimata tramite regole;
@@ -48,6 +49,8 @@ Il dominio è stato scelto perché consente di rappresentare un problema realist
 Segnalazione
     |
     +--> Motore simbolico -> diagnosi, priorità logica, spiegazioni
+    |
+    +--> KB Prolog        -> controllo diagnosi, intervento e tecnici compatibili
     |
     +--> Rete bayesiana   -> probabilità dei guasti dato il sintomo
     |
@@ -68,6 +71,8 @@ Output finale
 | `validate_dataset.py` | Validazione della coerenza del dataset |
 | `create_ontology.py` | Creazione dell’ontologia OWL |
 | `logic_engine.py` | Regole simboliche per diagnosi e priorità |
+| `prolog_export.py` | Esportazione della KB in formato Prolog |
+| `prolog_engine.py` | Consultazione della KB Prolog generata |
 | `bayes_engine.py` | Inferenza probabilistica sui guasti |
 | `train_models.py` | Addestramento e valutazione dei modelli |
 | `csp_assignment.py` | Assegnazione tecnico tramite vincoli |
@@ -81,7 +86,7 @@ Output finale
 
 ## 4. Rappresentazione della conoscenza
 
-La conoscenza di dominio è rappresentata in due modi complementari.
+La conoscenza di dominio è rappresentata in tre modi complementari.
 
 Il primo livello è il file `domain.py`, che contiene il vocabolario controllato del sistema:
 
@@ -110,7 +115,31 @@ Le principali proprietà rappresentate sono:
 | `haCompetenza` | collega un tecnico alle sue competenze |
 | `richiedeCompetenza` | collega un dispositivo alla competenza richiesta |
 
-Dataset e ontologia derivano dallo stesso vocabolario controllato, riducendo incoerenze tra dati, regole e rappresentazione semantica.
+Il terzo livello è la Knowledge Base Prolog generata in `knowledge_base/kb.pl`. Questa KB contiene fatti relativi a diagnosi, interventi, competenze e tecnici, oltre ad alcune regole derivate.
+
+Esempi di fatti Prolog:
+
+```prolog
+diagnosi(router_laboratorio, connessione_assente, router_down).
+intervento(router_down, riavvio_o_sostituzione_router).
+competenza_guasto(alimentazione_guasta, elettrico).
+competenza_tecnico(manutentore_elettrico, elettrico).
+```
+
+Esempi di regole Prolog esportate:
+
+```prolog
+puo_intervenire(Tecnico, Guasto) :-
+    competenza_guasto(Guasto, Competenza),
+    competenza_tecnico(Tecnico, Competenza),
+    disponibile(Tecnico).
+
+cura_per(Dispositivo, Sintomo, Intervento) :-
+    diagnosi(Dispositivo, Sintomo, Guasto),
+    intervento(Guasto, Intervento).
+```
+
+Dataset, ontologia e KB Prolog derivano dallo stesso vocabolario controllato, riducendo incoerenze tra dati, regole e rappresentazione semantica.
 
 ---
 
@@ -154,7 +183,7 @@ Warnings: none
 
 ---
 
-## 6. Motore simbolico
+## 6. Motore simbolico e controllo Prolog
 
 Il motore simbolico è implementato nel file `logic_engine.py`.
 
@@ -172,7 +201,31 @@ e sintomo = non_si_accende
 allora guasto = alimentazione_guasta
 ```
 
-Questa parte rende il sistema interpretabile rispetto a una classificazione puramente statistica.
+La Knowledge Base Prolog viene generata da `prolog_export.py` e consultata tramite `prolog_engine.py`.
+
+Il modulo `prolog_engine.py` legge `knowledge_base/kb.pl` e consente query semplici su:
+
+- diagnosi;
+- intervento;
+- tecnici compatibili;
+- coerenza con il motore simbolico.
+
+Per esempio, nel caso:
+
+```text
+proiettore + non_si_accende
+```
+
+il sistema ottiene:
+
+```text
+Guasto da KB Prolog: alimentazione_guasta
+Intervento da KB Prolog: intervento_elettrico
+Tecnici compatibili da KB: manutentore_elettrico, manutentore_impianti
+Coerente con diagnosi simbolica: sì
+```
+
+Il controllo Prolog non sostituisce il motore Python, ma agisce come rappresentazione logica esterna e come verifica di coerenza della diagnosi.
 
 ---
 
@@ -276,10 +329,10 @@ Il modulo `search_comparison.py` confronta A* con Dijkstra.
 
 | Algoritmo | Lunghezza percorso | Nodi espansi | Tempo |
 |---|---:|---:|---:|
-| A* | 20 | 109 | 0.1531 ms |
-| Dijkstra | 20 | 128 | 0.1299 ms |
+| A* | 20 | 109 | circa 0.15-0.23 ms |
+| Dijkstra | 20 | 128 | circa 0.13-0.20 ms |
 
-Entrambi trovano un percorso ottimo della stessa lunghezza. A* espande meno nodi grazie all’euristica Manhattan.
+Entrambi trovano un percorso ottimo della stessa lunghezza. A* espande meno nodi grazie all’euristica Manhattan. Il tempo non viene enfatizzato, perché su griglie piccole può oscillare per effetto dell’overhead.
 
 ---
 
@@ -290,6 +343,7 @@ La demo integrata è implementata nel file `main.py`.
 Il caso di esempio produce:
 
 - diagnosi simbolica: `router_down`;
+- controllo Prolog: `router_down`, coerente con la diagnosi simbolica;
 - inferenza bayesiana: `router_down` come guasto più probabile;
 - intervento: `riavvio_o_sostituzione_router`;
 - priorità da regole: `alta`;
@@ -297,7 +351,7 @@ Il caso di esempio produce:
 - tecnico assegnato: `tecnico_rete`;
 - percorso A*: `[(7, 2), (8, 2)]`.
 
-Il file `cli.py` permette di inserire casi personalizzati da terminale. Nel caso `proiettore + non_si_accende`, il sistema diagnostica `alimentazione_guasta`, richiede competenza `elettrico` e assegna `manutentore_elettrico`.
+Il file `cli.py` permette di inserire casi personalizzati da terminale. Nel caso `proiettore + non_si_accende`, il sistema diagnostica `alimentazione_guasta`, la KB Prolog conferma la diagnosi, Bayes indica lo stesso guasto come più probabile, il CSP richiede competenza `elettrico` e assegna `manutentore_elettrico`.
 
 ---
 
@@ -328,6 +382,7 @@ Il sistema è un prototipo e presenta alcuni limiti:
 
 - il dataset è sintetico;
 - l’ontologia è limitata;
+- la consultazione Prolog implementa solo un sottoinsieme controllato dei fatti esportati;
 - il campus è rappresentato come griglia semplificata;
 - viene gestita una segnalazione alla volta;
 - le probabilità bayesiane sono definite manualmente;
@@ -336,6 +391,7 @@ Il sistema è un prototipo e presenta alcuni limiti:
 Possibili sviluppi futuri:
 
 - uso di dati reali;
+- collegamento a un interprete Prolog completo;
 - apprendimento delle probabilità bayesiane dai dati;
 - gestione di più segnalazioni simultanee;
 - ottimizzazione multi-obiettivo;
@@ -354,6 +410,7 @@ Il progetto integra:
 
 - conoscenza di dominio;
 - ontologia OWL;
+- Knowledge Base Prolog;
 - regole simboliche;
 - inferenza bayesiana;
 - apprendimento supervisionato;

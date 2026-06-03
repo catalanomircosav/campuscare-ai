@@ -2,7 +2,7 @@
 
 CampusCare AI è un prototipo di sistema intelligente basato su conoscenza per la gestione di segnalazioni tecniche in aule e laboratori universitari.
 
-Il sistema analizza una segnalazione, stima la priorità, produce una diagnosi, propone un intervento, assegna un tecnico compatibile e calcola un percorso operativo tramite A*.
+Il sistema analizza una segnalazione, stima la priorità, produce una diagnosi, consulta una Knowledge Base Prolog, stima probabilisticamente i guasti tramite Bayes, propone un intervento, assegna un tecnico compatibile e calcola un percorso operativo tramite A*.
 
 Il progetto è sviluppato per l’esame di Ingegneria della Conoscenza.
 
@@ -21,6 +21,7 @@ Laboratorio, router non funzionante, connessione assente, lezione imminente, mol
 il sistema produce:
 
 - diagnosi simbolica del guasto;
+- controllo tramite Knowledge Base Prolog;
 - inferenza bayesiana sui guasti più probabili;
 - intervento consigliato;
 - priorità stimata tramite regole;
@@ -37,6 +38,7 @@ il sistema produce:
 |---|---|
 | Sistemi basati su conoscenza | Integrazione di conoscenza, regole, dati e decisioni |
 | Ontologie | Rappresentazione OWL del dominio |
+| Knowledge Base Prolog | Esportazione e consultazione di `knowledge_base/kb.pl` |
 | Ragionamento simbolico | Regole per diagnosi, priorità e spiegazioni |
 | Ragionamento probabilistico | Rete bayesiana semplice `Guasto -> Sintomo` |
 | Apprendimento supervisionato | Classificazione della priorità delle segnalazioni |
@@ -56,6 +58,8 @@ il sistema produce:
 Segnalazione
     |
     +--> Motore simbolico      -> diagnosi, priorità logica, spiegazioni
+    |
+    +--> KB Prolog             -> controllo diagnosi, intervento e tecnici compatibili
     |
     +--> Rete bayesiana        -> probabilità dei guasti dato il sintomo
     |
@@ -81,6 +85,8 @@ campuscare-ai/
 ├── pytest.ini
 ├── data/
 ├── knowledge_base/
+│   ├── campuscare_ontology.owl
+│   └── kb.pl
 ├── models/
 ├── plots/
 ├── results/
@@ -91,6 +97,8 @@ campuscare-ai/
 │       ├── validate_dataset.py
 │       ├── create_ontology.py
 │       ├── logic_engine.py
+│       ├── prolog_export.py
+│       ├── prolog_engine.py
 │       ├── bayes_engine.py
 │       ├── train_models.py
 │       ├── csp_assignment.py
@@ -149,6 +157,18 @@ Generare l’ontologia OWL:
 python -m src.campuscare.create_ontology
 ```
 
+Generare la Knowledge Base Prolog:
+
+```bash
+python -m src.campuscare.prolog_export
+```
+
+Consultare la Knowledge Base Prolog:
+
+```bash
+python -m src.campuscare.prolog_engine
+```
+
 Eseguire il motore simbolico:
 
 ```bash
@@ -204,6 +224,7 @@ python -m pytest
 ```text
 data/segnalazioni.csv
 knowledge_base/campuscare_ontology.owl
+knowledge_base/kb.pl
 results/metrics.json
 results/search_comparison.csv
 plots/priority_distribution.png
@@ -239,6 +260,7 @@ Le metriche considerate sono:
 Il progetto include inoltre:
 
 - validazione automatica del dataset;
+- consultazione della KB Prolog;
 - confronto A* vs Dijkstra;
 - test automatici con `pytest`.
 
