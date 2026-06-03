@@ -188,6 +188,7 @@ def print_analysis_report(result: dict[str, Any]) -> None:
 
     case = result["case"]
     symbolic = result["symbolic_reasoning"]
+    prolog = result["prolog_reasoning"]
     bayes = result["bayesian_reasoning"]
     ml = result["machine_learning"]
     assignment = result["csp_assignment"]
@@ -215,6 +216,18 @@ def print_analysis_report(result: dict[str, Any]) -> None:
     print(f"- Guasto: {symbolic['fault']}")
     print(f"- Intervento: {symbolic['intervention']}")
     print(f"- Priorità da regole: {format_priority(symbolic['rule_priority'])}")
+
+    print()
+    print("Controllo Prolog")
+    print("----------------")
+    print(f"- Guasto da KB Prolog: {prolog['fault']}")
+    print(f"- Intervento da KB Prolog: {prolog['intervention']}")
+    print(f"- Tecnici compatibili da KB: {', '.join(prolog['compatible_technicians'])}")
+    print(
+        "- Coerente con diagnosi simbolica: "
+        f"{'sì' if prolog['consistent_with_symbolic'] else 'no'}"
+    )
+    print(f"- Spiegazione: {prolog['explanation']}")
 
     print()
     print("Spiegazioni")

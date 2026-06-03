@@ -31,6 +31,7 @@ from .train_models import (
 )
 
 from .bayes_engine import analyze_symptom
+from .prolog_engine import analyze_with_prolog_kb
 
 def load_or_train_model():
     """Carica il modello operativo oppure lo addestra se non esiste."""
@@ -88,6 +89,10 @@ def analyze_report(case: dict[str, Any]) -> dict[str, Any]:
     logic_result = analyze_case(case)
     ml_priority = predict_priority(model, case)
     bayes_result = analyze_symptom(case["symptom"])
+    prolog_result = analyze_with_prolog_kb(
+        device=case["device"],
+        symptom=case["symptom"],
+    )
 
     target_position = ROOM_COORDINATES[case["room_name"]]
 
@@ -124,6 +129,13 @@ def analyze_report(case: dict[str, Any]) -> dict[str, Any]:
             "intervention": logic_result.intervention,
             "rule_priority": logic_result.rule_priority,
             "explanations": logic_result.explanations,
+        },
+        "prolog_reasoning": {
+            "fault": prolog_result.fault,
+            "intervention": prolog_result.intervention,
+            "compatible_technicians": prolog_result.compatible_technicians,
+            "consistent_with_symbolic": prolog_result.fault == logic_result.fault,
+            "explanation": prolog_result.explanation,
         },
         "bayesian_reasoning": {
             "evidence_symptom": bayes_result.evidence_symptom,
