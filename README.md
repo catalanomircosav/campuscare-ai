@@ -28,7 +28,6 @@ Il sistema produce:
 - percorso calcolato con A*;
 - spiegazione delle decisioni.
 
-___
 
 ---
 
@@ -153,10 +152,10 @@ ___
 
 Durante l’esecuzione vengono generati:
 
-- data/segnalazioni.csv
-- knowledge_base/campuscare_ontology.owl
-- models/priority_model.joblib
-- results/metrics.json
+- `data/segnalazioni.csv`
+- `knowledge_base/campuscare_ontology.owl`
+- `models/priority_model.joblib`
+- `results/metrics.json`
 
 ## Valutazione
 
