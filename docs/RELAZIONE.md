@@ -7,9 +7,9 @@
 
 CampusCare AI è un prototipo di sistema intelligente basato su conoscenza progettato per supportare la gestione di segnalazioni tecniche in aule e laboratori universitari.
 
-Il sistema riceve una segnalazione strutturata, ad esempio un problema relativo a un router di laboratorio, a un proiettore o a un impianto audio, e produce una risposta composta da diagnosi, priorità, intervento consigliato, tecnico assegnato e percorso operativo.
+Il sistema riceve una segnalazione strutturata, ad esempio un problema relativo a un router di laboratorio, a un proiettore o a un impianto audio, e produce una risposta composta da diagnosi, stima probabilistica dei guasti, priorità, intervento consigliato, tecnico assegnato e percorso operativo.
 
-L’obiettivo non è realizzare un semplice classificatore Machine Learning, ma un piccolo Knowledge-Based System ibrido che integri rappresentazione della conoscenza, ragionamento simbolico, apprendimento supervisionato, vincoli e ricerca euristica.
+L’obiettivo non è realizzare un semplice classificatore Machine Learning, ma un piccolo Knowledge-Based System ibrido che integri rappresentazione della conoscenza, ragionamento simbolico, ragionamento probabilistico, apprendimento supervisionato, vincoli e ricerca euristica.
 
 ---
 
@@ -30,6 +30,7 @@ Una segnalazione è descritta da informazioni come:
 Dato un caso in input, il sistema deve produrre:
 
 - una diagnosi simbolica del guasto probabile;
+- una stima bayesiana dei guasti compatibili con il sintomo;
 - un intervento consigliato;
 - una priorità stimata tramite regole;
 - una priorità predetta tramite modello supervisionato;
@@ -37,22 +38,22 @@ Dato un caso in input, il sistema deve produrre:
 - un percorso operativo calcolato con A*;
 - una spiegazione delle decisioni.
 
-Il dominio è stato scelto perché consente di rappresentare un problema realistico ma controllabile, in cui non basta una singola predizione statistica: è necessario combinare dati, conoscenza, vincoli e pianificazione.
+Il dominio è stato scelto perché consente di rappresentare un problema realistico ma controllabile, in cui non basta una singola predizione statistica: è necessario combinare dati, conoscenza, vincoli, incertezza e pianificazione.
 
 ---
 
 ## 3. Architettura del sistema
-
-Il sistema è organizzato in moduli indipendenti ma integrati.
 
 ```text
 Segnalazione
     |
     +--> Motore simbolico -> diagnosi, priorità logica, spiegazioni
     |
+    +--> Rete bayesiana   -> probabilità dei guasti dato il sintomo
+    |
     +--> Modello ML       -> priorità predetta
     |
-    +--> CSP              -> tecnico assegnato
+    +--> CSP              -> tecnico assegnato in base al guasto
     |
     +--> A*               -> percorso operativo
     |
@@ -60,17 +61,20 @@ Segnalazione
 Output finale
 ```
 
-I moduli principali sono:
-
 | Modulo | Ruolo |
 |---|---|
 | `domain.py` | Definizione del vocabolario del dominio |
 | `generate_dataset.py` | Generazione del dataset sintetico |
+| `validate_dataset.py` | Validazione della coerenza del dataset |
 | `create_ontology.py` | Creazione dell’ontologia OWL |
 | `logic_engine.py` | Regole simboliche per diagnosi e priorità |
+| `bayes_engine.py` | Inferenza probabilistica sui guasti |
 | `train_models.py` | Addestramento e valutazione dei modelli |
 | `csp_assignment.py` | Assegnazione tecnico tramite vincoli |
 | `astar.py` | Calcolo del percorso tramite A* |
+| `search_comparison.py` | Confronto sperimentale A* vs Dijkstra |
+| `generate_plots.py` | Generazione grafici per dataset e metriche |
+| `cli.py` | Interfaccia testuale per casi personalizzati |
 | `main.py` | Integrazione end-to-end |
 
 ---
@@ -87,24 +91,13 @@ Il primo livello è il file `domain.py`, che contiene il vocabolario controllato
 - guasti;
 - interventi;
 - tecnici;
-- competenze;
+- competenze richieste dai dispositivi;
+- competenze richieste dai guasti;
 - coordinate degli ambienti.
 
 Il secondo livello è l’ontologia OWL generata dal modulo `create_ontology.py`.
 
-L’ontologia contiene classi come:
-
-- `Ambiente`;
-- `Aula`;
-- `Laboratorio`;
-- `Biblioteca`;
-- `Ufficio`;
-- `Dispositivo`;
-- `Sintomo`;
-- `Guasto`;
-- `Intervento`;
-- `Tecnico`;
-- `Competenza`.
+L’ontologia contiene classi come `Ambiente`, `Aula`, `Laboratorio`, `Dispositivo`, `Sintomo`, `Guasto`, `Intervento`, `Tecnico` e `Competenza`.
 
 Le principali proprietà rappresentate sono:
 
@@ -117,11 +110,11 @@ Le principali proprietà rappresentate sono:
 | `haCompetenza` | collega un tecnico alle sue competenze |
 | `richiedeCompetenza` | collega un dispositivo alla competenza richiesta |
 
-Questa rappresentazione consente di separare la conoscenza del dominio dalla logica procedurale del sistema.
+Dataset e ontologia derivano dallo stesso vocabolario controllato, riducendo incoerenze tra dati, regole e rappresentazione semantica.
 
 ---
 
-## 5. Generazione del dataset
+## 5. Generazione e validazione del dataset
 
 Il dataset è generato tramite lo script `generate_dataset.py`.
 
@@ -140,19 +133,9 @@ Ogni riga rappresenta una segnalazione tecnica. Le feature principali sono:
 | `network_load` | carico stimato della rete |
 | `priority` | classe target |
 
-La priorità non viene assegnata in modo casuale puro. Viene calcolata tramite regole di dominio basate su:
+La priorità non viene assegnata in modo casuale puro. Viene calcolata tramite regole di dominio basate su importanza del dispositivo, gravità del sintomo, imminenza dell’evento, numero di utenti coinvolti, tipo di ambiente, temperatura e carico della rete.
 
-- importanza del dispositivo;
-- gravità del sintomo;
-- imminenza dell’evento;
-- numero di utenti coinvolti;
-- tipo di ambiente;
-- temperatura;
-- carico della rete.
-
-È stata inoltre introdotta una piccola componente di rumore per simulare casi ambigui o valutazioni non perfette.
-
-La distribuzione ottenuta nel dataset generato è:
+Distribuzione del dataset:
 
 | Priorità | Numero di esempi |
 |---|---:|
@@ -161,7 +144,13 @@ La distribuzione ottenuta nel dataset generato è:
 | bassa | 98 |
 | critica | 48 |
 
-La distribuzione non è perfettamente bilanciata, ma è coerente con il dominio: i casi critici sono meno frequenti rispetto a quelli medi o alti.
+Il modulo `validate_dataset.py` controlla colonne, valori categorici, coerenza stanza/tipo e intervalli numerici. La validazione produce:
+
+```text
+Valid: True
+Errors: none
+Warnings: none
+```
 
 ---
 
@@ -175,58 +164,59 @@ Il modulo svolge tre compiti:
 2. stima della priorità tramite regole;
 3. produzione di spiegazioni testuali.
 
-Esempio di regola di diagnosi:
+Esempio:
 
 ```text
-se dispositivo = router_laboratorio
-e sintomo = connessione_assente
-allora guasto = router_down
+se dispositivo = proiettore
+e sintomo = non_si_accende
+allora guasto = alimentazione_guasta
 ```
 
-Esempio di output simbolico:
-
-```text
-Fault: router_down
-Intervention: riavvio_o_sostituzione_router
-Rule priority: alta
-```
-
-Il sistema produce anche spiegazioni come:
-
-- il laboratorio non ha connessione;
-- è prevista una lezione o un esame;
-- l’evento didattico è imminente;
-- il dispositivo è essenziale per l’attività didattica;
-- il sintomo compromette il servizio.
-
-Questa parte rende il sistema più interpretabile rispetto a una classificazione puramente statistica.
+Questa parte rende il sistema interpretabile rispetto a una classificazione puramente statistica.
 
 ---
 
-## 7. Apprendimento supervisionato e valutazione
+## 7. Inferenza bayesiana
+
+Il modulo `bayes_engine.py` implementa una rete bayesiana semplice con struttura:
+
+```text
+Guasto -> Sintomo
+```
+
+Lo scopo è stimare:
+
+```text
+P(Guasto | Sintomo)
+```
+
+dato un sintomo osservato.
+
+Esempio per `connessione_assente`:
+
+| Guasto | Probabilità |
+|---|---:|
+| `router_down` | 0.6625 |
+| `sovraccarico_rete` | 0.2208 |
+| `input_configurato_male` | 0.0205 |
+| `nessun_guasto_critico` | 0.0189 |
+
+Il modulo bayesiano non sostituisce il motore simbolico, ma fornisce una seconda opinione probabilistica.
+
+---
+
+## 8. Apprendimento supervisionato e valutazione
 
 Il modulo `train_models.py` addestra modelli supervisionati per predire la priorità della segnalazione.
 
-Sono stati confrontati quattro modelli:
+Sono stati confrontati:
 
 - Decision Tree;
 - Random Forest;
 - Logistic Regression;
 - Naive Bayes.
 
-Le feature categoriche sono codificate tramite One-Hot Encoding, mentre le feature numeriche sono standardizzate.
-
 La valutazione è stata effettuata tramite Stratified K-Fold Cross-Validation a 5 fold.
-
-Le metriche considerate sono:
-
-- accuracy;
-- macro-F1;
-- weighted-F1;
-- precision macro;
-- recall macro.
-
-I risultati principali sono:
 
 | Modello | Accuracy media ± std | Macro-F1 media ± std | Weighted-F1 media ± std |
 |---|---:|---:|---:|
@@ -237,48 +227,41 @@ I risultati principali sono:
 
 Il modello operativo scelto è Logistic Regression, perché ottiene il miglior compromesso complessivo tra accuracy, macro-F1 e weighted-F1.
 
-La scelta del modello non è quindi fissata a priori, ma deriva dal confronto sperimentale.
+Il modulo `generate_plots.py` produce grafici relativi alla distribuzione delle classi e al confronto tra modelli.
 
 ---
 
-## 8. CSP per assegnazione del tecnico
+## 9. CSP per assegnazione del tecnico
 
-Il modulo `csp_assignment.py` implementa un semplice problema di soddisfacimento di vincoli.
+Il modulo `csp_assignment.py` implementa un problema di soddisfacimento di vincoli.
 
-La variabile da assegnare è:
-
-```text
-tecnico_assegnato
-```
-
-Il dominio è l’insieme dei tecnici disponibili nel sistema.
+La variabile da assegnare è `tecnico_assegnato`.
 
 I vincoli sono:
 
 - il tecnico deve essere disponibile;
-- il tecnico deve avere la competenza richiesta dal dispositivo;
+- il tecnico deve avere la competenza richiesta;
 - il tecnico deve trovarsi entro una distanza massima dal luogo della segnalazione.
 
-Tra i tecnici che soddisfano i vincoli, il sistema sceglie quello più vicino.
+Nella versione attuale, se il guasto è noto, la competenza richiesta viene ricavata dal guasto diagnosticato.
 
 Esempio:
 
 ```text
-Dispositivo: router_laboratorio
-Competenza richiesta: rete
-Tecnico assegnato: tecnico_rete
-Distanza: 1.0
+Dispositivo: proiettore
+Sintomo: non_si_accende
+Guasto diagnosticato: alimentazione_guasta
+Competenza richiesta: elettrico
+Tecnico assegnato: manutentore_elettrico
 ```
 
-Il modulo restituisce anche i tecnici scartati e le motivazioni dello scarto, ad esempio competenza non compatibile.
+Questo rende il sistema più integrato: la diagnosi simbolica influenza la decisione operativa successiva.
 
 ---
 
-## 9. A* per pianificazione del percorso
+## 10. A* e confronto con Dijkstra
 
-Il modulo `astar.py` implementa l’algoritmo A* su una griglia.
-
-La formulazione del problema è:
+Il modulo `astar.py` implementa A* su una griglia.
 
 | Elemento | Descrizione |
 |---|---|
@@ -289,52 +272,36 @@ La formulazione del problema è:
 | Euristica | distanza di Manhattan |
 | Ostacoli | celle non attraversabili |
 
-Esempio di percorso:
+Il modulo `search_comparison.py` confronta A* con Dijkstra.
 
-```text
-[(7, 2), (8, 2)]
-```
+| Algoritmo | Lunghezza percorso | Nodi espansi | Tempo |
+|---|---:|---:|---:|
+| A* | 20 | 109 | 0.1531 ms |
+| Dijkstra | 20 | 128 | 0.1299 ms |
 
-In questo caso il tecnico parte dalla posizione `(7, 2)` e raggiunge il laboratorio in `(8, 2)` con costo 1.
-
-La rappresentazione a griglia è volutamente semplificata, ma permette di esplicitare chiaramente spazio degli stati, azioni, costo ed euristica.
+Entrambi trovano un percorso ottimo della stessa lunghezza. A* espande meno nodi grazie all’euristica Manhattan.
 
 ---
 
-## 10. Demo integrata
+## 11. Demo integrata e CLI
 
 La demo integrata è implementata nel file `main.py`.
 
-Il caso di esempio è:
-
-```json
-{
-  "room_name": "Lab_1",
-  "room_type": "laboratorio",
-  "device": "router_laboratorio",
-  "symptom": "connessione_assente",
-  "event_in_minutes": 20,
-  "users_involved": 72,
-  "exam_or_lecture": 1,
-  "temperature": 26.0,
-  "network_load": 0.88
-}
-```
-
-Il sistema produce:
+Il caso di esempio produce:
 
 - diagnosi simbolica: `router_down`;
+- inferenza bayesiana: `router_down` come guasto più probabile;
 - intervento: `riavvio_o_sostituzione_router`;
 - priorità da regole: `alta`;
 - priorità ML: `critica`;
 - tecnico assegnato: `tecnico_rete`;
 - percorso A*: `[(7, 2), (8, 2)]`.
 
-La differenza tra priorità simbolica e priorità ML non viene considerata un errore, ma un’informazione utile: il sistema mantiene separati il ragionamento basato su regole e la predizione statistica.
+Il file `cli.py` permette di inserire casi personalizzati da terminale. Nel caso `proiettore + non_si_accende`, il sistema diagnostica `alimentazione_guasta`, richiede competenza `elettrico` e assegna `manutentore_elettrico`.
 
 ---
 
-## 11. Test
+## 12. Test
 
 Sono stati implementati test minimi tramite `pytest`.
 
@@ -355,7 +322,7 @@ L’esecuzione dei test produce:
 
 ---
 
-## 12. Limiti e sviluppi futuri
+## 13. Limiti e sviluppi futuri
 
 Il sistema è un prototipo e presenta alcuni limiti:
 
@@ -363,22 +330,23 @@ Il sistema è un prototipo e presenta alcuni limiti:
 - l’ontologia è limitata;
 - il campus è rappresentato come griglia semplificata;
 - viene gestita una segnalazione alla volta;
-- non è presente una rete bayesiana nella versione attuale;
+- le probabilità bayesiane sono definite manualmente;
 - non vengono usati dati reali di ticketing.
 
 Possibili sviluppi futuri:
 
-- introduzione di una rete bayesiana per diagnosi probabilistica;
+- uso di dati reali;
+- apprendimento delle probabilità bayesiane dai dati;
 - gestione di più segnalazioni simultanee;
 - ottimizzazione multi-obiettivo;
-- uso di dati reali;
 - interfaccia grafica o dashboard;
 - espansione dell’ontologia;
-- rappresentazione del campus come grafo realistico.
+- rappresentazione del campus come grafo realistico;
+- reasoning OWL più avanzato.
 
 ---
 
-## 13. Conclusioni
+## 14. Conclusioni
 
 CampusCare AI mostra come un problema pratico di gestione tecnica possa essere modellato tramite un sistema intelligente basato su conoscenza.
 
@@ -387,9 +355,12 @@ Il progetto integra:
 - conoscenza di dominio;
 - ontologia OWL;
 - regole simboliche;
+- inferenza bayesiana;
 - apprendimento supervisionato;
+- validazione del dataset;
 - vincoli;
 - ricerca euristica;
+- confronto sperimentale tra algoritmi di ricerca;
 - spiegazione delle decisioni.
 
 Il valore principale del prototipo non è la complessità di un singolo algoritmo, ma l’integrazione coerente di più tecniche in un sistema unico e verificabile.
