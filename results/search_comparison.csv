@@ -1,3 +1,3 @@
 algorithm,path_length,expanded_nodes,execution_time_ms
-astar,20,109,0.2342
-dijkstra,20,128,0.2002
+astar,20,109,0.1625
+dijkstra,20,128,0.1334
