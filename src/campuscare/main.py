@@ -30,6 +30,7 @@ from .train_models import (
     train_final_model,
 )
 
+from .bayes_engine import analyze_symptom
 
 def load_or_train_model():
     """Carica il modello operativo oppure lo addestra se non esiste."""
@@ -86,6 +87,7 @@ def analyze_report(case: dict[str, Any]) -> dict[str, Any]:
 
     logic_result = analyze_case(case)
     ml_priority = predict_priority(model, case)
+    bayes_result = analyze_symptom(case["symptom"])
 
     target_position = ROOM_COORDINATES[case["room_name"]]
 
@@ -121,6 +123,12 @@ def analyze_report(case: dict[str, Any]) -> dict[str, Any]:
             "intervention": logic_result.intervention,
             "rule_priority": logic_result.rule_priority,
             "explanations": logic_result.explanations,
+        },
+        "bayesian_reasoning": {
+            "evidence_symptom": bayes_result.evidence_symptom,
+            "most_probable_fault": bayes_result.most_probable_fault,
+            "probabilities": bayes_result.probabilities,
+            "explanation": bayes_result.explanation,
         },
         "machine_learning": {
             "predicted_priority": ml_priority,
