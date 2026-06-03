@@ -242,12 +242,12 @@ def print_analysis_report(result: dict[str, Any]) -> None:
     if assignment["assigned"]:
         print(f"- Tecnico assegnato: {assignment['technician']}")
         print(f"- Competenza richiesta: {assignment['required_competence']}")
+        print(f"- Guasto usato per assegnazione: {assignment['fault_used']}")
         print(f"- Posizione tecnico: {tuple(assignment['technician_position'])}")
         print(f"- Distanza: {assignment['distance']}")
     else:
         print("- Nessun tecnico assegnato")
         print(f"- Motivo: {assignment['reason']}")
-
     print()
     print("Percorso A*")
     print("-----------")

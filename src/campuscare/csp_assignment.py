@@ -23,11 +23,20 @@ from __future__ import annotations
 from math import dist
 from typing import Any
 
-from .domain import DEVICE_COMPETENCE, TECHNICIANS
+from .domain import DEVICE_COMPETENCE, FAULT_COMPETENCE, TECHNICIANS
 
+def get_required_competence(device: str, fault: str | None = None) -> str:
+    """Restituisce la competenza richiesta.
 
-def get_required_competence(device: str) -> str:
-    """Restituisce la competenza richiesta per gestire un dispositivo."""
+    Se il guasto è noto, viene usato il mapping guasto -> competenza.
+    Altrimenti si usa il mapping dispositivo -> competenza.
+    """
+
+    if fault is not None:
+        if fault not in FAULT_COMPETENCE:
+            raise ValueError(f"Unknown fault: {fault}")
+
+        return FAULT_COMPETENCE[fault]
 
     if device not in DEVICE_COMPETENCE:
         raise ValueError(f"Unknown device: {device}")
@@ -69,11 +78,12 @@ def assign_technician(
     device: str,
     target_position: tuple[int, int],
     max_distance: float = 20.0,
+    fault: str | None = None,
 ) -> dict[str, Any]:
     """Assegna un tecnico rispettando i vincoli."""
 
-    required_competence = get_required_competence(device)
-
+    required_competence = get_required_competence(device, fault)
+    
     feasible_technicians: list[dict[str, Any]] = []
     rejected_technicians: list[dict[str, Any]] = []
 
@@ -102,6 +112,7 @@ def assign_technician(
         return {
             "assigned": False,
             "required_competence": required_competence,
+            "fault_used": fault,
             "reason": "nessun tecnico soddisfa tutti i vincoli",
             "rejected_technicians": rejected_technicians,
         }
@@ -114,6 +125,7 @@ def assign_technician(
     return {
         "assigned": True,
         "required_competence": required_competence,
+        "fault_used": fault,
         "technician": selected["name"],
         "technician_position": selected["position"],
         "distance": selected["distance"],

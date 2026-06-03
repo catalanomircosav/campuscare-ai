@@ -94,6 +94,7 @@ def analyze_report(case: dict[str, Any]) -> dict[str, Any]:
     assignment = assign_technician(
         device=case["device"],
         target_position=target_position,
+        fault=logic_result.fault,
     )
 
     path = []

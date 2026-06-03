@@ -54,6 +54,17 @@ FAULTS = [
     "nessun_guasto_critico",
 ]
 
+FAULT_COMPETENCE = {
+    "cavo_hdmi_guasto": "audiovisivo",
+    "input_configurato_male": "audiovisivo",
+    "router_down": "rete",
+    "sovraccarico_rete": "rete",
+    "alimentazione_guasta": "elettrico",
+    "climatizzazione_guasta": "impianti",
+    "impianto_audio_guasto": "audiovisivo",
+    "hardware_pc_guasto": "informatica",
+    "nessun_guasto_critico": "informatica",
+}
 
 INTERVENTIONS = {
     "cavo_hdmi_guasto": "sostituzione_cavo_hdmi",
