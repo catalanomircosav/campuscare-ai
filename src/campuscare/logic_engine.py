@@ -50,6 +50,13 @@ def diagnose_fault(device: str, symptom: str) -> tuple[str, str]:
             "L'immagine del proiettore è distorta: probabile configurazione errata dell'input.",
         ),
         (
+            "proiettore",
+            "non_si_accende",
+        ): (
+            "alimentazione_guasta",
+            "Il proiettore non si accende: possibile problema di alimentazione.",
+        ),
+        (
             "pc_docente",
             "riavvii_frequenti",
         ): (
@@ -62,6 +69,20 @@ def diagnose_fault(device: str, symptom: str) -> tuple[str, str]:
         ): (
             "alimentazione_guasta",
             "Il PC docente non si accende: possibile problema di alimentazione.",
+        ),
+        (
+            "pc_docente",
+            "connessione_assente",
+        ): (
+            "router_down",
+            "Il PC docente non ha connessione: possibile problema di rete o router non raggiungibile.",
+        ),
+        (
+            "pc_docente",
+            "connessione_lenta",
+        ): (
+            "sovraccarico_rete",
+            "La connessione del PC docente è lenta: possibile sovraccarico della rete.",
         ),
         (
             "rete_wifi",
@@ -99,11 +120,25 @@ def diagnose_fault(device: str, symptom: str) -> tuple[str, str]:
             "La temperatura è alta e il climatizzatore è coinvolto: probabile guasto di climatizzazione.",
         ),
         (
+            "climatizzatore",
+            "non_si_accende",
+        ): (
+            "alimentazione_guasta",
+            "Il climatizzatore non si accende: possibile problema di alimentazione.",
+        ),
+        (
             "impianto_audio",
             "audio_assente",
         ): (
             "impianto_audio_guasto",
             "L'audio è assente: probabile problema all'impianto audio.",
+        ),
+        (
+            "impianto_audio",
+            "non_si_accende",
+        ): (
+            "alimentazione_guasta",
+            "L'impianto audio non si accende: possibile problema di alimentazione.",
         ),
         (
             "presa_elettrica",
@@ -125,6 +160,13 @@ def diagnose_fault(device: str, symptom: str) -> tuple[str, str]:
         ): (
             "input_configurato_male",
             "La LIM non riceve segnale: possibile configurazione errata o collegamento non corretto.",
+        ),
+        (
+            "lim",
+            "non_si_accende",
+        ): (
+            "alimentazione_guasta",
+            "La LIM non si accende: possibile problema di alimentazione.",
         ),
     }
 
